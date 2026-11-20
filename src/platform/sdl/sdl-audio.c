@@ -42,6 +42,12 @@ bool mSDLInitAudio(struct mSDLAudio* context, struct mCoreThread* threadContext)
 	context->desiredSpec.callback = _mSDLAudioCallback;
 	context->desiredSpec.userdata = context;
 	context->desiredSpec.samples = context->samples;
+#if defined(__ANDROID__) && !SDL_VERSION_ATLEAST(3, 0, 0)
+	/* Queue headroom and device submission cadence are separate concerns.
+	 * Preserve the configured resampling queue and producer watermark, while
+	 * avoiding 4096-frame (about 93 ms at 44.1 kHz) device-side bursts. */
+	if (context->desiredSpec.samples > 1024) context->desiredSpec.samples = 1024;
+#endif
 	context->desiredSpec.format = AUDIO_S16SYS;
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	context->deviceId = SDL_OpenAudioDevice(0, 0, &context->desiredSpec, &context->obtainedSpec, SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
@@ -147,7 +153,17 @@ static void _mSDLAudioCallback(void* context, Uint8* data, int len) {
 			fauxClock = mCoreCalculateFramerateRatio(audioContext->core, audioContext->sync->fpsTarget);
 		}
 		mCoreSyncLockAudio(audioContext->sync);
-		audioContext->sync->audioHighWater = audioContext->samples + audioContext->resampler.highWaterMark + audioContext->resampler.lowWaterMark + (audioContext->samples >> 6);
+		size_t syncSamples = audioContext->samples;
+#if defined(__ANDROID__) && !SDL_VERSION_ATLEAST(3, 0, 0)
+		/* Keep producer headroom independent of small Android SDL2 output
+		 * callbacks. A callback-sized watermark can stall emulation and
+		 * leave subsequent callbacks short of audio. Retain the configured
+		 * queue size and known-good sync headroom independently of submission. */
+		if (syncSamples < 4096) {
+			syncSamples = 4096;
+		}
+#endif
+		audioContext->sync->audioHighWater = syncSamples + audioContext->resampler.highWaterMark + audioContext->resampler.lowWaterMark + (syncSamples >> 6);
 		audioContext->sync->audioHighWater *= sampleRate / (fauxClock * audioContext->obtainedSpec.freq);
 
 		if (audioContext->resampler.source) {

@@ -44,6 +44,7 @@ bool mSDLSWInit(struct mSDLRenderer* renderer) {
 
 	int stride;
 	SDL_LockTexture(renderer->sdlTex, 0, (void**) &renderer->outputBuffer, &stride);
+	renderer->outputBufferStride = stride / BYTES_PER_PIXEL;
 	renderer->core->setVideoBuffer(renderer->core, renderer->outputBuffer, stride / BYTES_PER_PIXEL);
 
 	return true;

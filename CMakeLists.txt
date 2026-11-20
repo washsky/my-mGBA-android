@@ -501,6 +501,12 @@ endif()
 
 set(WANT_ZLIB ${USE_ZLIB})
 set(WANT_PNG ${USE_PNG})
+if(ANDROID AND LIBMGBA_ONLY)
+	# Keep the Android core-only build lean, but retain PNG support for
+	# screenshots and screenshot data embedded in save states.
+	set(WANT_ZLIB ON)
+	set(WANT_PNG ON)
+endif()
 set(WANT_SQLITE3 ${USE_SQLITE3})
 set(USE_CMOCKA ${BUILD_SUITE})
 
@@ -592,12 +598,16 @@ endif()
 if(WANT_ZLIB AND NOT USE_ZLIB)
 	set(SKIP_INSTALL_ALL ON)
 	set(ZLIB_BUILD_SHARED OFF)
+	set(ZLIB_BUILD_TESTING OFF CACHE BOOL "" FORCE)
 	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/src/third-party/zlib zlib EXCLUDE_FROM_ALL)
 	set_target_properties(zlibstatic PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/zlib;${CMAKE_CURRENT_SOURCE_DIR}/src/third-party/zlib" POSITION_INDEPENDENT_CODE ON)
 	set(ZLIB_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src/third-party/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
 	set(ZLIB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/third-party/zlib ${CMAKE_CURRENT_BINARY_DIR}/zlib)
-	set(ZLIB_LIBRARY zlibstatic)
-	list(APPEND DEPENDENCY_LIB zlibstatic)
+	set(ZLIB_LIBRARY ${CMAKE_CURRENT_BINARY_DIR}/zlib/libz.a)
+	# Use the concrete archive path so libpng's FindZLIB invocation does not
+	# create an imported target whose location is the bare name "zlibstatic".
+	set(ZLIB_LIBRARIES "")
+	list(APPEND DEPENDENCY_LIB ${CMAKE_CURRENT_BINARY_DIR}/zlib/libz.a)
 	set(USE_ZLIB ON)
 endif()
 
@@ -630,6 +640,14 @@ if(WANT_PNG AND USE_ZLIB AND NOT USE_PNG)
 	set(PNG_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src/third-party/libpng ${CMAKE_CURRENT_BINARY_DIR}/libpng)
 	list(APPEND DEPENDENCY_LIB png_static)
 	set(USE_PNG ON)
+endif()
+
+if(ANDROID AND LIBMGBA_ONLY)
+	# The bundled targets are already present in DEPENDENCY_LIB. libpng's
+	# package discovery can repopulate these variables with bare target names,
+	# which are not valid linker arguments from the Android parent directory.
+	set(PNG_LIBRARIES "")
+	set(ZLIB_LIBRARIES "")
 endif()
 
 if(USE_PNG)

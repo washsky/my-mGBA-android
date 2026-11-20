@@ -1,6 +1,8 @@
 mGBA
 ====
 
+**Android 中文移植** · [使用说明与构建步骤](src/platform/android/README.md)
+
 mGBA is an emulator for running Game Boy Advance games. It aims to be faster and more accurate than many existing Game Boy Advance emulators, as well as adding features that other emulators lack. It also supports Game Boy and Game Boy Color games.
 
 Up-to-date news and downloads can be found at [mgba.io](https://mgba.io/).

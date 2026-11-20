@@ -1,0 +1,14 @@
+# Gradle
+.cxx/
+.gradle/
+build/
+app/build/
+local.properties
+
+# Local dependency checkout and signing files
+SDL2/
+keystore.properties
+*.jks
+*.keystore
+*.apk
+*.aab
